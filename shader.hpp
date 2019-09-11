@@ -1,7 +1,6 @@
 #pragma once
 
-#define GLEW_STATIC
-#include <GL/glew.h>
+#include <glad/glad.h>
 
 class shader {
 private:
@@ -11,4 +10,6 @@ public:
 	shader( const GLchar * & vertText, const GLchar * & fragText );
 	void Use();
 	GLint GetParam( const GLchar * text );
+
+	~shader();
 };

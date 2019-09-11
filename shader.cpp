@@ -3,13 +3,13 @@
 
 GLuint shader::Compile( const GLchar*& shadText, GLenum type ) {
 	GLuint shad = glCreateShader( type );
-	glShaderSource( shad, 1, &shadText, NULL);
+	glShaderSource( shad, 1, &shadText, NULL );
 	glCompileShader( shad );
 	// Check for compile time errors
 	GLint success;
-	GLchar infoLog[512];
-	glGetShaderiv( shad, GL_COMPILE_STATUS, &success);
-	if (!success)
+	GLchar infoLog[ 512 ];
+	glGetShaderiv( shad, GL_COMPILE_STATUS, &success );
+	if ( !success )
 	{
 		glGetShaderInfoLog( shad, 512, NULL, infoLog );
 		std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
@@ -28,10 +28,10 @@ shader::shader( const GLchar * & vertText, const GLchar * & fragText ) {
 	glLinkProgram( prog );
 	// Check for linking errors
 	GLint success;
-	GLchar infoLog[512];
+	GLchar infoLog[ 512 ];
 	glGetProgramiv( prog, GL_LINK_STATUS, &success);
 	if (!success) {
-		glGetProgramInfoLog( prog, 512, NULL, infoLog);
+		glGetProgramInfoLog( prog, 512, NULL, infoLog );
 		std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
 	}
 	glDeleteShader( vert );
@@ -39,10 +39,13 @@ shader::shader( const GLchar * & vertText, const GLchar * & fragText ) {
 }
 
 void shader::Use() {
-	glUseProgram(prog);
+	glUseProgram( prog );
 }
 
-GLint shader::GetParam(const GLchar* text)
-{
+GLint shader::GetParam( const GLchar* text ) {
 	return glGetUniformLocation( prog, text );
+}
+
+shader::~shader() {
+	glDeleteProgram( prog );
 }
