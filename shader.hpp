@@ -3,14 +3,17 @@
 #include <glad/glad.h>
 
 class shader {
-private:
+public:
 	GLuint prog;
 public:
 	static GLuint Compile( const GLchar*& shadText, GLenum type );
 	shader( const GLchar * & vertText, const GLchar * & fragText );
 	void Use();
 	GLint GetParam( const GLchar * text );
-	void Uniform4f( const GLchar * text, float, float, float, float );
+	void Uniform( const GLchar * text, float, float, float, float );
+	void Uniform( const GLchar * text, float, float, float );
+	void Uniform( const GLchar * text, float, float );
+	void Uniform( const GLchar * text, float );
 
 	~shader();
 };

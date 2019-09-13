@@ -46,9 +46,21 @@ GLint shader::GetParam( const GLchar* text ) {
 	return glGetUniformLocation( prog, text );
 }
 
-void shader::Uniform4f( const GLchar * text, float x, float y, float z, float t ) {
+void shader::Uniform( const GLchar * text, float x, float y, float z, float t ) {
 	GLint varLoc = glGetUniformLocation( prog, text );
 	glUniform4f( varLoc, x, y, z, t );
+}
+void shader::Uniform( const GLchar * text, float x, float y, float z) {
+	GLint varLoc = glGetUniformLocation( prog, text );
+	glUniform3f( varLoc, x, y, z );
+}
+void shader::Uniform( const GLchar * text, float x, float y) {
+	GLint varLoc = glGetUniformLocation( prog, text );
+	glUniform2f( varLoc, x, y );
+}
+void shader::Uniform( const GLchar * text, float x ) {
+	GLint varLoc = glGetUniformLocation( prog, text );
+	glUniform1f( varLoc, x );
 }
 
 shader::~shader() {

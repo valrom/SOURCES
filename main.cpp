@@ -1,13 +1,14 @@
 ﻿#include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <stb_image.h>
 
 #include <iostream>
 
 #include "shader.hpp"
+#include "texture.hpp"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
+GLFWwindow * AllInit();
 
 // settings
 const unsigned int SCR_WIDTH = 800;
@@ -20,12 +21,14 @@ layout ( location = 0 ) in vec3 position;
 layout ( location = 1 ) in vec3 color;
 layout ( location = 2 ) in vec2 textCoord;
 
+uniform float scale;
+
 
 out vec3 aCor;
 out vec2 tCoord;
 
 void main() {
-	gl_Position = vec4( position, 1.0f );
+	gl_Position = vec4( position * scale, 1.0f );
 	aCor = color;
 	tCoord = textCoord;
 }
@@ -37,7 +40,7 @@ const GLchar * fragmentShaderSource = R"KEK(
 
 #version 450 core
 
-uniform vec4 scale;
+uniform float scale;
 uniform sampler2D myText;
 in vec3 aCor;
 in vec2 tCoord;
@@ -45,73 +48,18 @@ in vec2 tCoord;
 out vec4 FragColor;
 
 void main() {
-	FragColor = texture( myText, -tCoord ) * vec4( aCor , scale.x );
+	FragColor = texture( myText, vec2( tCoord.x, -tCoord.y ) ) * vec4( aCor * scale , 1.0f );
 }
 
 )KEK";
 
 int main()
 {
-	// glfw: initialize and configure
-	// ------------------------------
-	glfwInit();
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	GLFWwindow * window  = AllInit();
 
-#ifdef __APPLE__
-	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // uncomment this statement to fix compilation on OS X
-#endif
-
-	// glfw window creation
-	// --------------------
-	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
-	if (window == NULL)
-	{
-		std::cout << "Failed to create GLFW window" << std::endl;
-		glfwTerminate();
-		return -1;
-	}
-	glfwMakeContextCurrent(window);
-	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-
-	// glad: load all OpenGL function pointers
-	// ---------------------------------------
-	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-	{
-		std::cout << "Failed to initialize GLAD" << std::endl;
-		return -1;
-	}
-
-
-	// build and compile our shader program
-	// ------------------------------------
-	// vertex shader
 	shader prog( vertexShaderSource, fragmentShaderSource );
 
-	// create texture
-	int width, height, nrChan;
-	unsigned char * image = stbi_load( "test.jpg", &width, &height, &nrChan, 0 );
-
-	if ( !image )
-		std::cout << "fuck you" << std::endl;
-
-	GLuint texture;
-	glGenTextures( 1, &texture );
-
-	glBindTexture( GL_TEXTURE_2D, texture );
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    // set texture filtering parameters
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image );
-	glGenerateMipmap( GL_TEXTURE_2D );
-
-	stbi_image_free( image );
-	glBindTexture( GL_TEXTURE_2D, 0 );
+	texture text( "test.jpg" );
 
 	unsigned int indices[] = {  
         0, 1, 3, // first triangle
@@ -174,9 +122,9 @@ int main()
 
 		// draw our first triangle
 		prog.Use();
-		prog.Uniform4f( "scale", abs( sin( glfwGetTime() ) ), 0.0f, 1.0f, 1.0f );
+		prog.Uniform( "scale", abs( sin( glfwGetTime() ) ) );
 		
-		glBindTexture( GL_TEXTURE_2D, texture );
+		text.Bind();
 		glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
 		glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0 );
 		
@@ -215,4 +163,28 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 	// make sure the viewport matches the new window dimensions; note that width and 
 	// height will be significantly larger than specified on retina displays.
 	glViewport(0, 0, width, height);
+}
+
+GLFWwindow * AllInit() {
+	glfwInit();
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+	if ( window == nullptr )
+	{
+		std::cout << "Failed to create GLFW window" << std::endl;
+		glfwTerminate();
+		return nullptr;
+	}
+	glfwMakeContextCurrent(window);
+	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
+	if ( !gladLoadGLLoader( ( GLADloadproc ) glfwGetProcAddress ) )
+	{
+		std::cout << "Failed to initialize GLAD" << std::endl;
+		return nullptr;
+	}
+	return window;
 }
