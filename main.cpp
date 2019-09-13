@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <vector>
+#include <cmath>
 
 #include "shader.hpp"
 #include "texture.hpp"
@@ -88,9 +89,9 @@ int main()
 
 	}
 
-	unsigned int indices[] = {  
-        0, 1, 3, // first triangle
-        1, 2, 3  // second triangle
+	unsigned int indices[] = {
+		0, 1, 3, // first triangle
+		1, 2, 3  // second triangle
     };
 
 	GLfloat vertices[] = {
@@ -154,7 +155,7 @@ int main()
 			mass[i].Render();
 			glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
 			glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0 );
-		
+
 			glBindVertexArray( 0 );
 		}
 		// glBindVertexArray(0); // no need to unbind it every time 
