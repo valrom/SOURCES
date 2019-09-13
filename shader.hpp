@@ -10,6 +10,7 @@ public:
 	shader( const GLchar * & vertText, const GLchar * & fragText );
 	void Use();
 	GLint GetParam( const GLchar * text );
+	void Uniform4f( const GLchar * text, float, float, float, float );
 
 	~shader();
 };

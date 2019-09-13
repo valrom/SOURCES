@@ -46,6 +46,11 @@ GLint shader::GetParam( const GLchar* text ) {
 	return glGetUniformLocation( prog, text );
 }
 
+void shader::Uniform4f( const GLchar * text, float x, float y, float z, float t ) {
+	GLint varLoc = glGetUniformLocation( prog, text );
+	glUniform4f( varLoc, x, y, z, t );
+}
+
 shader::~shader() {
 	glDeleteProgram( prog );
 }
