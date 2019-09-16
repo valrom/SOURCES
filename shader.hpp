@@ -15,5 +15,7 @@ public:
 	void Uniform( const GLchar * text, float, float );
 	void Uniform( const GLchar * text, float );
 
+	void Matrix4( const GLchar * text, float *);
+
 	~shader();
 };

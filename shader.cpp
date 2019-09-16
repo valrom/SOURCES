@@ -63,6 +63,11 @@ void shader::Uniform( const GLchar * text, float x ) {
 	glUniform1f( varLoc, x );
 }
 
+void shader::Matrix4( const GLchar * text, float * x ) {
+	GLint varLoc = glGetUniformLocation( prog, text );
+	glUniformMatrix4fv( varLoc, 1, GL_FALSE, x );
+}
+
 shader::~shader() {
 	glDeleteProgram( prog );
 }

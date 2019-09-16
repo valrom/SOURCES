@@ -1,5 +1,8 @@
 ﻿#include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include <iostream>
 #include <vector>
@@ -23,17 +26,15 @@ layout ( location = 0 ) in vec3 position;
 layout ( location = 1 ) in vec3 color;
 layout ( location = 2 ) in vec2 textCoord;
 
-uniform vec2 objXY;
-uniform vec2 objSS;
-
+uniform mat4 trans;
 
 out vec3 aCor;
 out vec2 tCoord;
 
 void main() {
-	gl_Position = vec4( vec3( position.xy * objSS + objXY, position.z ), 1.0f );
+	gl_Position = trans * vec4( position, 1.0f );
 	aCor = color;
-	tCoord = textCoord;
+	tCoord = vec2( textCoord.x, 1.0f - textCoord.y );
 }
 
 )KEK";
@@ -50,29 +51,11 @@ in vec2 tCoord;
 out vec4 FragColor;
 
 void main() {
-	FragColor = texture( myText, vec2( tCoord.x, -tCoord.y ) ) * vec4( aCor, 1.0f );
+	FragColor = texture( myText, tCoord ) * vec4( aCor, 1.0f );;
 }
 
 )KEK";
 
-class object {
-public:
-	float x,y;
-	float size_x, size_y;
-	shader * render;
-	texture * text;
-public:
-	object() = default;
-	object( shader * ren, texture * tex ) : x( 0.0f ), y (0.0f ), size_x( 0.5f ), size_y( 0.5f ), render( ren ), text( tex ) {
-
-	}
-	void Render() {
-		text->Bind();
-		render->Use();
-		render->Uniform( "objXY", x, y );
-		render->Uniform( "objSS", size_x, size_y );
-	}
-};
 
 int main()
 {
@@ -82,12 +65,6 @@ int main()
 
 	texture text( "test.jpg" );
 
-	object kek( &prog, &text );
-
-	std::vector< object > mass( 6, kek );
-	for ( int i = 0; i < mass.size(); i++ ) {
-
-	}
 
 	unsigned int indices[] = {
 		0, 1, 3, // first triangle
@@ -101,6 +78,20 @@ int main()
     -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // Нижний левый
     -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // Верхний левый
 	};
+
+	GLfloat matrixLol[] = {
+		1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f
+	};
+
+
+	glm::mat4 trans = glm::make_mat4( matrixLol );
+	trans = glm::rotate( trans, 90.0f, glm::vec3( 0.0f, 0.0f, 1.0f ) );
+	trans = glm::scale( trans, glm::vec3( 0.5f, 0.5f, 0.5f ) );
+
+	
 
 	unsigned int VBO, VAO, EBO;
 	glGenVertexArrays(1, &VAO);
@@ -147,17 +138,18 @@ int main()
 		// ------
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
-
+		prog.Use();
+		text.Bind();
 		// draw our first triangle
-		for ( int i = 0; i < mass.size(); i++ ) {
-			mass[i].x = sin( glfwGetTime() + i * 3.14 / 6.0 ) * 0.5f;
-			mass[i].y = cos( glfwGetTime() + i * 3.14 / 6.0 ) * 0.5f;
-			mass[i].Render();
+		trans = glm::make_mat4( matrixLol );
+		trans = glm::rotate( trans, (float)glfwGetTime(), glm::vec3( 0.0f, 0.0f, 1.0f ) );
+		trans = glm::scale( trans, glm::vec3( 0.5f, 0.5f, 0.5f ) );
+		prog.Matrix4( "trans", glm::value_ptr( trans ) );
+		
 			glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
 			glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0 );
 
 			glBindVertexArray( 0 );
-		}
 		// glBindVertexArray(0); // no need to unbind it every time 
 
 		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
