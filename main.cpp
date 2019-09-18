@@ -23,17 +23,16 @@ const GLchar * vertexShaderSource = R"KEK(
 
 #version 450 core
 layout ( location = 0 ) in vec3 position;
-layout ( location = 1 ) in vec3 color;
-layout ( location = 2 ) in vec2 textCoord;
+layout ( location = 1 ) in vec2 textCoord;
 
-uniform mat4 trans;
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
 
-out vec3 aCor;
 out vec2 tCoord;
 
 void main() {
-	gl_Position = trans * vec4( position, 1.0f );
-	aCor = color;
+	gl_Position = projection * view * model * vec4( position, 1.0f );
 	tCoord = vec2( textCoord.x, 1.0f - textCoord.y );
 }
 
@@ -45,13 +44,12 @@ const GLchar * fragmentShaderSource = R"KEK(
 #version 450 core
 
 uniform sampler2D myText;
-in vec3 aCor;
 in vec2 tCoord;
 
 out vec4 FragColor;
 
 void main() {
-	FragColor = texture( myText, tCoord ) * vec4( aCor, 1.0f );;
+	FragColor = texture( myText, tCoord );
 }
 
 )KEK";
@@ -66,18 +64,49 @@ int main()
 	texture text( "test.jpg" );
 
 
-	unsigned int indices[] = {
-		0, 1, 3, // first triangle
-		1, 2, 3  // second triangle
-    };
+    GLfloat vertices[] = {
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
 
-	GLfloat vertices[] = {
-    // Позиции          // Цвета             // Текстурные координаты
-     0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // Верхний правый
-     0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // Нижний правый
-    -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // Нижний левый
-    -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // Верхний левый
-	};
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
+    };
 
 	GLfloat matrixLol[] = {
 		1.0f, 0.0f, 0.0f, 0.0f,
@@ -87,11 +116,15 @@ int main()
 	};
 
 
-	glm::mat4 trans = glm::make_mat4( matrixLol );
-	trans = glm::rotate( trans, 90.0f, glm::vec3( 0.0f, 0.0f, 1.0f ) );
-	trans = glm::scale( trans, glm::vec3( 0.5f, 0.5f, 0.5f ) );
 
-	
+	glm::mat4 model = glm::make_mat4( matrixLol );
+
+	glm::mat4 view = glm::make_mat4( matrixLol );
+	view = glm::translate( view, glm::vec3( 0.0f, 0.0f, -2.0f ) );
+
+	glm::mat4 projection = glm::make_mat4( matrixLol );
+	projection = glm::perspective( 45.0f, SCR_WIDTH / ( float ) SCR_HEIGHT, 0.1f, 100.0f );
+
 
 	unsigned int VBO, VAO, EBO;
 	glGenVertexArrays(1, &VAO);
@@ -103,17 +136,14 @@ int main()
 	glBindBuffer( GL_ARRAY_BUFFER, VBO );
 	glBufferData( GL_ARRAY_BUFFER, sizeof( vertices ), vertices, GL_STATIC_DRAW );
 
-	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, EBO );
-	glBufferData( GL_ELEMENT_ARRAY_BUFFER, sizeof( indices ), indices, GL_STATIC_DRAW );
 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+    // position attribute
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void*)0);
     glEnableVertexAttribArray(0);
-    // color attribute
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+    // texture coord attribute
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
     glEnableVertexAttribArray(1);
     // texture coord attribute
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-    glEnableVertexAttribArray(2);
 
 	// note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -125,7 +155,7 @@ int main()
 
 	// uncomment this call to draw in wireframe polygons.
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
+	glEnable( GL_DEPTH_TEST );
 	// render loop
 	// -----------
 	while (!glfwWindowShouldClose(window))
@@ -137,20 +167,24 @@ int main()
 		// render
 		// ------
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 		prog.Use();
 		text.Bind();
 		// draw our first triangle
-		trans = glm::make_mat4( matrixLol );
-		trans = glm::rotate( trans, (float)glfwGetTime(), glm::vec3( 0.0f, 0.0f, 1.0f ) );
-		trans = glm::scale( trans, glm::vec3( 0.5f, 0.5f, 0.5f ) );
-		prog.Matrix4( "trans", glm::value_ptr( trans ) );
-		
+		model = glm::make_mat4( matrixLol );
+		model = glm::rotate( model, glm::radians( ( float ) glfwGetTime() * 90.0f ), glm::vec3( 1.0f, 0.0f, 0.0f ) );
+		model = glm::rotate( model, glm::radians( ( float ) glfwGetTime() * 90.0f ), glm::vec3( 0.0f, 1.0f, 0.0f ) );
+		prog.Matrix4( "model", glm::value_ptr( model ) );
+		prog.Matrix4( "view", glm::value_ptr( view ) );
+		prog.Matrix4( "projection", glm::value_ptr( projection ) );
+
+
 			glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
-			glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0 );
+			glDrawArrays( GL_TRIANGLES, 0, 36 );
+			//glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0 );
 
 			glBindVertexArray( 0 );
-		// glBindVertexArray(0); // no need to unbind it every time 
+		// glBindVertexArray(0); // no need to unbind it every time
 
 		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
 		// -------------------------------------------------------------------------------
