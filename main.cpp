@@ -174,6 +174,10 @@ int main()
 		model = glm::make_mat4( matrixLol );
 		model = glm::rotate( model, glm::radians( ( float ) glfwGetTime() * 90.0f ), glm::vec3( 1.0f, 0.0f, 0.0f ) );
 		model = glm::rotate( model, glm::radians( ( float ) glfwGetTime() * 90.0f ), glm::vec3( 0.0f, 1.0f, 0.0f ) );
+
+		view = glm::make_mat4( matrixLol );
+		view = glm::translate( view, glm::vec3( 0.0f, 0.0f, -2.0f ) );
+
 		prog.Matrix4( "model", glm::value_ptr( model ) );
 		prog.Matrix4( "view", glm::value_ptr( view ) );
 		prog.Matrix4( "projection", glm::value_ptr( projection ) );
@@ -182,6 +186,15 @@ int main()
 			glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
 			glDrawArrays( GL_TRIANGLES, 0, 36 );
 			//glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0 );
+			view = glm::make_mat4( matrixLol );
+		view = glm::translate( view, glm::vec3( 2.0f, 0.0f, -5.0f ) );
+		prog.Matrix4( "view", glm::value_ptr( view ) );
+			glDrawArrays( GL_TRIANGLES, 0, 36 );
+
+			view = glm::make_mat4( matrixLol );
+		view = glm::translate( view, glm::vec3( -2.0f, 0.0f, -5.0f ) );
+		prog.Matrix4( "view", glm::value_ptr( view ) );
+		glDrawArrays( GL_TRIANGLES, 0, 36 );
 
 			glBindVertexArray( 0 );
 		// glBindVertexArray(0); // no need to unbind it every time
