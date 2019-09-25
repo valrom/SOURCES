@@ -10,6 +10,7 @@
 
 #include "shader.hpp"
 #include "texture.hpp"
+#include "engine.hpp"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
@@ -56,12 +57,14 @@ void main() {
 
 )KEK";
 
-glm::vec3 cameraPos( 0.0f, 0.0f, 3.0f );
+glm::vec3 cameraPos( 0.0f, 0.0f, 50.0f );
 glm::vec3 cameraFront( 0.0f, 0.0f, -1.0f );
 glm::vec3 cameraUp( 0.0f, 1.0f, 0.0f );
 GLfloat cameraSpeed = 0.05f;
 
-double pitch = 0.0, yaw = 0.0;
+snake snk( 10 );
+
+double pitch = 0.0, yaw = -90.0;
 bool firstMouse = true;
 
 void mouse_callback( GLFWwindow * window, double xpos, double ypos );
@@ -151,7 +154,7 @@ int main()
 
 	glEnable( GL_DEPTH_TEST );
 
-
+	int tick = 0;
 	while (!glfwWindowShouldClose(window))
 	{
 		processInput(window);
@@ -161,12 +164,14 @@ int main()
 		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 		prog.Use();
 		text.Bind();
+		if ( ++tick % 30 == 0 )
+			snk.update();
 
-		for ( int i = 0; i < cubes.size(); ++i ) {
+		for ( int i = 0; i < snk.size; ++i ) {
 
 			glm::mat4 model( 1.0f ), view( 1.0f ), projection( 1.0f );
 
-			model = glm::translate( model, cubes[ i ] );
+			model = glm::translate( model, snk.posits[ i ] );
 			view = glm::lookAt( cameraPos, cameraPos + cameraFront, cameraUp );
 			projection = glm::perspective( 45.0f, ( float ) SCR_WIDTH / SCR_HEIGHT, 0.1f, 100.0f );
 
@@ -204,6 +209,14 @@ void processInput(GLFWwindow* window)
 		cameraPos -= cameraSpeed * cameraUp;
 	if ( glfwGetKey( window, GLFW_KEY_E ) == GLFW_PRESS )
 		cameraPos += cameraSpeed * cameraUp;
+	if ( glfwGetKey( window, GLFW_KEY_UP ) == GLFW_PRESS )
+		snk.direction = 1;
+	if ( glfwGetKey( window, GLFW_KEY_LEFT ) == GLFW_PRESS )
+		snk.direction = 2;
+	if ( glfwGetKey( window, GLFW_KEY_DOWN ) == GLFW_PRESS )
+		snk.direction = 3;
+	if ( glfwGetKey( window, GLFW_KEY_RIGHT ) == GLFW_PRESS )
+		snk.direction = 0;
 }
 
 void mouse_callback( GLFWwindow * window, double xpos, double ypos ) {
