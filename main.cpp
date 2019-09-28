@@ -10,7 +10,6 @@
 
 #include "shader.hpp"
 #include "texture.hpp"
-#include "engine.hpp"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
@@ -47,22 +46,33 @@ const GLchar * fragmentShaderSource = R"KEK(
 #version 450 core
 
 uniform sampler2D myText;
+
+uniform vec3 objColor;
+uniform vec3 lightColor;
+
 in vec2 tCoord;
 
 out vec4 FragColor;
 
 void main() {
-	FragColor = texture( myText, tCoord );
+	FragColor = vec4( objColor * lightColor, 1.0f );
 }
 
 )KEK";
 
-glm::vec3 cameraPos( 0.0f, 0.0f, 50.0f );
+const GLchar * lightShader = R"KEK(
+
+#version 450 core
+out vec4 FragColor;
+void main() { FragColor = vec4( 1.0f ); }
+)KEK";
+
+glm::vec3 cameraPos( 0.0f, 0.0f, 10.0f );
 glm::vec3 cameraFront( 0.0f, 0.0f, -1.0f );
 glm::vec3 cameraUp( 0.0f, 1.0f, 0.0f );
+glm::vec3 lightPos( 1.2f, 1.0f, 2.0f );
 GLfloat cameraSpeed = 0.05f;
 
-snake snk( 10 );
 
 double pitch = 0.0, yaw = -90.0;
 bool firstMouse = true;
@@ -74,6 +84,7 @@ int main()
 	GLFWwindow * window  = AllInit();
 
 	shader prog( vertexShaderSource, fragmentShaderSource );
+	shader light( vertexShaderSource, lightShader );
 
 	texture text( "stone.jpg" );
 
@@ -126,13 +137,6 @@ int main()
         -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
     };
 
-	std::vector< glm::vec3 > cubes = {
-		glm::vec3( -1.0f, -1.0f, 0.0f ),
-		glm::vec3( 1.0f, 1.0f, 0.0f ),
-		glm::vec3( -1.0f, 1.0f, 0.0f ),
-		glm::vec3( 1.0f, -1.0f, 0.0f )
-	};
-
 	unsigned int VBO, VAO, EBO;
 	glGenVertexArrays(1, &VAO);
 	glGenBuffers(1, &VBO);
@@ -154,7 +158,6 @@ int main()
 
 	glEnable( GL_DEPTH_TEST );
 
-	int tick = 0;
 	while (!glfwWindowShouldClose(window))
 	{
 		processInput(window);
@@ -164,23 +167,19 @@ int main()
 		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 		prog.Use();
 		text.Bind();
-		if ( ++tick % 30 == 0 )
-			snk.update();
 
-		for ( int i = 0; i < snk.size; ++i ) {
-
-			glm::mat4 model( 1.0f ), view( 1.0f ), projection( 1.0f );
-
-			model = glm::translate( model, snk.posits[ i ] );
-			view = glm::lookAt( cameraPos, cameraPos + cameraFront, cameraUp );
+		glm::mat4 model( 1.0f ),
+			view = glm::lookAt( cameraPos, cameraPos + cameraFront, cameraUp ),
 			projection = glm::perspective( 45.0f, ( float ) SCR_WIDTH / SCR_HEIGHT, 0.1f, 100.0f );
 
-			prog.Matrix4( "model", glm::value_ptr( model ) );
-			prog.Matrix4( "view", glm::value_ptr( view ) );
-			prog.Matrix4( "projection", glm::value_ptr( projection ) );
+		prog.Matrix4( "model", glm::value_ptr( model ) );
+		prog.Matrix4( "view", glm::value_ptr( view ) );
+		prog.Matrix4( "projection", glm::value_ptr( projection ) );
+		prog.Uniform( "objColor", 1.0f, 0.5f, 0.31f );
+		prog.Uniform( "lightColor", 1.0f, 1.0f, 1.0f );
 
-			glDrawArrays( GL_TRIANGLES, 0, 36 );
-		}
+		glDrawArrays( GL_TRIANGLES, 0, 36 );
+
 		glfwSwapBuffers( window );
 		glfwPollEvents();
 		std::cout << pitch << " " << yaw << std::endl;
@@ -209,14 +208,6 @@ void processInput(GLFWwindow* window)
 		cameraPos -= cameraSpeed * cameraUp;
 	if ( glfwGetKey( window, GLFW_KEY_E ) == GLFW_PRESS )
 		cameraPos += cameraSpeed * cameraUp;
-	if ( glfwGetKey( window, GLFW_KEY_UP ) == GLFW_PRESS )
-		snk.direction = 1;
-	if ( glfwGetKey( window, GLFW_KEY_LEFT ) == GLFW_PRESS )
-		snk.direction = 2;
-	if ( glfwGetKey( window, GLFW_KEY_DOWN ) == GLFW_PRESS )
-		snk.direction = 3;
-	if ( glfwGetKey( window, GLFW_KEY_RIGHT ) == GLFW_PRESS )
-		snk.direction = 0;
 }
 
 void mouse_callback( GLFWwindow * window, double xpos, double ypos ) {
