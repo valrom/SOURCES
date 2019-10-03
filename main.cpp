@@ -180,9 +180,21 @@ int main()
 
 		glDrawArrays( GL_TRIANGLES, 0, 36 );
 
+		glm::mat4 liMod( 1.0f );
+		liMod = glm::translate( liMod, lightPos );
+		liMod = glm::scale( liMod, glm::vec3( 0.2f ) );
+
+		light.Use();
+
+		prog.Matrix4( "model", glm::value_ptr( liMod ) );
+		prog.Matrix4( "view", glm::value_ptr( view ) );
+		prog.Matrix4( "projection", glm::value_ptr( projection ) );
+		prog.Uniform( "objColor", 1.0f, 0.5f, 0.31f );
+		prog.Uniform( "lightColor", 1.0f, 1.0f, 1.0f );
+
+		glDrawArrays( GL_TRIANGLES, 0, 36 );
 		glfwSwapBuffers( window );
 		glfwPollEvents();
-		std::cout << pitch << " " << yaw << std::endl;
 	}
 
 	glDeleteVertexArrays(1, &VAO);
