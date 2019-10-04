@@ -23,19 +23,23 @@ double lastX = 0, lastY = 0;
 
 const GLchar * vertexShaderSource = R"KEK(
 
-#version 450 core
-layout ( location = 0 ) in vec3 position;
-layout ( location = 1 ) in vec2 textCoord;
+#version 330 core
+layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec3 aNormal;
+
+out vec3 FragPos;
+out vec3 Normal;
 
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
-out vec2 tCoord;
-
-void main() {
-	gl_Position = projection * view * model * vec4( position, 1.0f );
-	tCoord = vec2( textCoord.x, 1.0f - textCoord.y );
+void main()
+{
+    FragPos = vec3( model * vec4(aPos, 1.0));
+    Normal = vec3( model * vec4( aNormal, 0.0 ) );  
+    
+    gl_Position = projection * view * vec4(FragPos, 1.0);
 }
 
 )KEK";
@@ -43,34 +47,53 @@ void main() {
 
 const GLchar * fragmentShaderSource = R"KEK(
 
-#version 450 core
-
-uniform sampler2D myText;
-
-uniform vec3 objColor;
-uniform vec3 lightColor;
-
-in vec2 tCoord;
-
+#version 330 core
 out vec4 FragColor;
 
-void main() {
-	FragColor = vec4( objColor * lightColor, 1.0f );
-}
+in vec3 Normal;  
+in vec3 FragPos;  
+  
+uniform vec3 lightPos; 
+uniform vec3 lightColor;
+uniform vec3 objectColor;
+uniform vec3 viewPos;
+
+void main()
+{
+    // ambient
+    float ambientStrength = 0.1;
+    vec3 ambient = ambientStrength * lightColor;
+  	
+    // diffuse 
+    vec3 norm = normalize(Normal);
+    vec3 lightDir = normalize(lightPos - FragPos);
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = diff * lightColor;
+    
+    // specular
+    float specularStrength = 0.5;
+    vec3 viewDir = normalize(viewPos - FragPos);
+    vec3 reflectDir = reflect(-lightDir, norm);  
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+    vec3 specular = specularStrength * spec * lightColor;  
+        
+    vec3 result = (ambient + diffuse + specular) * objectColor;
+    FragColor = vec4(result, 1.0);
+} 
 
 )KEK";
 
 const GLchar * lightShader = R"KEK(
 
-#version 450 core
+#version 330 core
 out vec4 FragColor;
 void main() { FragColor = vec4( 1.0f ); }
 )KEK";
 
-glm::vec3 cameraPos( 0.0f, 0.0f, 10.0f );
+glm::vec3 cameraPos( 0.0f, 0, -3.0f );
 glm::vec3 cameraFront( 0.0f, 0.0f, -1.0f );
 glm::vec3 cameraUp( 0.0f, 1.0f, 0.0f );
-glm::vec3 lightPos( 1.2f, 1.0f, 2.0f );
+glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
 GLfloat cameraSpeed = 0.05f;
 
 
@@ -93,49 +116,49 @@ int main()
 	glfwSetCursorPosCallback( window, mouse_callback );
 
 
-    GLfloat vertices[] = {
-        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-         0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-
-        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-         0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-         0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
-    };
+	float vertices[] = {
+		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+		 0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+		 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+		 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+		-0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+		
+		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+		 0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+		-0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+		
+		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+		-0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+		-0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+		
+		 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+		 0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+		 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+		 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+		 0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+		 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+		
+		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+		 0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+		-0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+		
+		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+		 0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+		 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+		 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+		-0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
+	};
 
 	unsigned int VBO, VAO, EBO;
 	glGenVertexArrays(1, &VAO);
@@ -147,9 +170,9 @@ int main()
 	glBufferData( GL_ARRAY_BUFFER, sizeof( vertices ), vertices, GL_STATIC_DRAW );
 
 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (void*)0);
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
 	glEnableVertexAttribArray(1);
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -172,11 +195,18 @@ int main()
 			view = glm::lookAt( cameraPos, cameraPos + cameraFront, cameraUp ),
 			projection = glm::perspective( 45.0f, ( float ) SCR_WIDTH / SCR_HEIGHT, 0.1f, 100.0f );
 
+		// lightPos.x = sin( glfwGetTime() );
+		// lightPos.z = cos( glfwGetTime() );
+
+		// lightPos = cameraPos;
+
 		prog.Matrix4( "model", glm::value_ptr( model ) );
 		prog.Matrix4( "view", glm::value_ptr( view ) );
 		prog.Matrix4( "projection", glm::value_ptr( projection ) );
-		prog.Uniform( "objColor", 1.0f, 0.5f, 0.31f );
+		prog.Uniform( "objectColor", 1.0f, 0.5f, 0.31f );
 		prog.Uniform( "lightColor", 1.0f, 1.0f, 1.0f );
+		prog.Uniform( "lightPos", lightPos.x, lightPos.y, lightPos.y );
+		prog.Uniform( "viewPos", cameraPos.x, cameraPos.y, cameraPos.z );
 
 		glDrawArrays( GL_TRIANGLES, 0, 36 );
 
@@ -186,13 +216,15 @@ int main()
 
 		light.Use();
 
-		prog.Matrix4( "model", glm::value_ptr( liMod ) );
-		prog.Matrix4( "view", glm::value_ptr( view ) );
-		prog.Matrix4( "projection", glm::value_ptr( projection ) );
-		prog.Uniform( "objColor", 1.0f, 0.5f, 0.31f );
-		prog.Uniform( "lightColor", 1.0f, 1.0f, 1.0f );
+		light.Matrix4( "model", glm::value_ptr( liMod ) );
+		light.Matrix4( "view", glm::value_ptr( view ) );
+		light.Matrix4( "projection", glm::value_ptr( projection ) );
+		light.Uniform( "objColor", 1.0f, 0.5f, 0.31f );
+		light.Uniform( "lightColor", 1.0f, 1.0f, 1.0f );
+		light.Uniform( "lightPos", lightPos.x, lightPos.y, lightPos.y );
 
 		glDrawArrays( GL_TRIANGLES, 0, 36 );
+
 		glfwSwapBuffers( window );
 		glfwPollEvents();
 	}
@@ -262,8 +294,8 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 
 GLFWwindow * AllInit() {
 	glfwInit();
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
