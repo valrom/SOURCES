@@ -21,7 +21,7 @@ unsigned int SCR_HEIGHT = 600;
 
 double lastX = 0, lastY = 0;
 
-const GLchar * vertexShaderSource = R"KEK(
+const GLchar * lightVS = R"KEK(
 
 #version 330 core
 layout (location = 0) in vec3 aPos;
@@ -37,23 +37,23 @@ uniform mat4 projection;
 void main()
 {
     FragPos = vec3( model * vec4(aPos, 1.0));
-    Normal = vec3( model * vec4( aNormal, 0.0 ) );  
-    
+    Normal = mat3( transpose( inverse( model ) ) ) * aNormal;
+
     gl_Position = projection * view * vec4(FragPos, 1.0);
 }
 
 )KEK";
 
 
-const GLchar * fragmentShaderSource = R"KEK(
+const GLchar * lightFS = R"KEK(
 
 #version 330 core
 out vec4 FragColor;
 
-in vec3 Normal;  
-in vec3 FragPos;  
-  
-uniform vec3 lightPos; 
+in vec3 Normal;
+in vec3 FragPos;
+
+uniform vec3 lightPos;
 uniform vec3 lightColor;
 uniform vec3 objectColor;
 uniform vec3 viewPos;
@@ -63,31 +63,45 @@ void main()
     // ambient
     float ambientStrength = 0.1;
     vec3 ambient = ambientStrength * lightColor;
-  	
-    // diffuse 
+
+    // diffuse
     vec3 norm = normalize(Normal);
     vec3 lightDir = normalize(lightPos - FragPos);
     float diff = max(dot(norm, lightDir), 0.0);
     vec3 diffuse = diff * lightColor;
-    
+
     // specular
     float specularStrength = 0.5;
     vec3 viewDir = normalize(viewPos - FragPos);
-    vec3 reflectDir = reflect(-lightDir, norm);  
+    vec3 reflectDir = reflect(-lightDir, norm);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
-    vec3 specular = specularStrength * spec * lightColor;  
-        
+    vec3 specular = specularStrength * spec * lightColor;
+
     vec3 result = (ambient + diffuse + specular) * objectColor;
     FragColor = vec4(result, 1.0);
-} 
+}
 
 )KEK";
 
-const GLchar * lightShader = R"KEK(
+const GLchar * lampFS = R"KEK(
 
 #version 330 core
 out vec4 FragColor;
-void main() { FragColor = vec4( 1.0f ); }
+void main() { FragColor = vec4( 1.0 ); }
+)KEK";
+
+const GLchar * lampVS = R"KEK(
+
+#version 330 core
+
+layout ( location = 0 ) in vec3 aPos;
+
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
+
+void main() { gl_Position = projection * view * model * vec4( aPos, 1.0f ); }
+
 )KEK";
 
 glm::vec3 cameraPos( 0.0f, 0, -3.0f );
@@ -99,6 +113,7 @@ GLfloat cameraSpeed = 0.05f;
 
 double pitch = 0.0, yaw = -90.0;
 bool firstMouse = true;
+bool mouseFree = true;
 
 void mouse_callback( GLFWwindow * window, double xpos, double ypos );
 
@@ -106,140 +121,148 @@ int main()
 {
 	GLFWwindow * window  = AllInit();
 
-	shader prog( vertexShaderSource, fragmentShaderSource );
-	shader light( vertexShaderSource, lightShader );
+	shader prog( lightVS, lightFS );
+	shader light( lampVS, lampFS );
 
 	texture text( "stone.jpg" );
 
 	glfwSwapInterval( 1 );
-	glfwSetInputMode( window, GLFW_CURSOR, GLFW_CURSOR_DISABLED );
 	glfwSetCursorPosCallback( window, mouse_callback );
 
+    glEnable( GL_DEPTH_TEST );
 
-	float vertices[] = {
-		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		 0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		-0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		
-		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-		 0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-		
-		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-		
-		 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-		 0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-		 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-		 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-		 0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-		 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-		
-		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-		 0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-		
-		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-		 0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-		 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-		 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
-	};
+    float vertices[] = {
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
 
-	unsigned int VBO, VAO, EBO;
-	glGenVertexArrays(1, &VAO);
-	glGenBuffers(1, &VBO);
-	glGenBuffers( 1, &EBO );
-	glBindVertexArray( VAO );
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+         0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
 
-	glBindBuffer( GL_ARRAY_BUFFER, VBO );
-	glBufferData( GL_ARRAY_BUFFER, sizeof( vertices ), vertices, GL_STATIC_DRAW );
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+
+         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+
+        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
+    };
+
+    unsigned int VBO, cubeVAO;
+    glGenVertexArrays(1, &cubeVAO);
+    glGenBuffers(1, &VBO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glBindVertexArray(cubeVAO);
+
+    // position attribute
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    // normal attribute
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
 
 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (void*)0);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
-	glEnableVertexAttribArray(1);
+    // second, configure the light's VAO (VBO stays the same; the vertices are the same for the light object which is also a 3D cube)
+    unsigned int lightVAO;
+    glGenVertexArrays(1, &lightVAO);
+    glBindVertexArray(lightVAO);
 
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    // note that we update the lamp's position attribute's stride to reflect the updated buffer data
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
 
-	glBindVertexArray(0);
 
-	glEnable( GL_DEPTH_TEST );
 
 	while (!glfwWindowShouldClose(window))
 	{
 		processInput(window);
-		glBindVertexArray( VAO );
+
 		// render
-		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-		prog.Use();
-		text.Bind();
 
-		glm::mat4 model( 1.0f ),
-			view = glm::lookAt( cameraPos, cameraPos + cameraFront, cameraUp ),
-			projection = glm::perspective( 45.0f, ( float ) SCR_WIDTH / SCR_HEIGHT, 0.1f, 100.0f );
 
-		// lightPos.x = sin( glfwGetTime() );
-		// lightPos.z = cos( glfwGetTime() );
+        prog.Use();
+        prog.Uniform( "objectColor", 1.0f, 0.5f, 0.31f );
+        prog.Uniform( "lightColor", 1.0f, 1.0f, 1.0f );
+        prog.Uniform( "lightPos", lightPos.x, lightPos.y, lightPos.z );
+        prog.Uniform( "viewPos", cameraPos.x, cameraPos.y, cameraPos.z );
 
-		// lightPos = cameraPos;
+		glm::mat4 view = glm::lookAt( cameraPos, cameraPos + cameraFront, cameraUp ),
+			projection = glm::perspective( 45.0f, ( float ) SCR_WIDTH / ( float ) SCR_HEIGHT, 0.1f, 100.0f );
 
-		prog.Matrix4( "model", glm::value_ptr( model ) );
-		prog.Matrix4( "view", glm::value_ptr( view ) );
-		prog.Matrix4( "projection", glm::value_ptr( projection ) );
-		prog.Uniform( "objectColor", 1.0f, 0.5f, 0.31f );
-		prog.Uniform( "lightColor", 1.0f, 1.0f, 1.0f );
-		prog.Uniform( "lightPos", lightPos.x, lightPos.y, lightPos.y );
-		prog.Uniform( "viewPos", cameraPos.x, cameraPos.y, cameraPos.z );
+        prog.Matrix4( "projection", glm::value_ptr( projection ) );
+        prog.Matrix4( "view", glm::value_ptr( view ) );
 
-		glDrawArrays( GL_TRIANGLES, 0, 36 );
+        glm::mat4 model = glm::mat4(1.0f);
+        prog.Matrix4("model", glm::value_ptr( model ) );
 
-		glm::mat4 liMod( 1.0f );
-		liMod = glm::translate( liMod, lightPos );
-		liMod = glm::scale( liMod, glm::vec3( 0.2f ) );
+        glBindVertexArray(cubeVAO);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
 
-		light.Use();
+        // also draw the lamp object
+        light.Use();
+        light.Matrix4("projection", glm::value_ptr( projection ) );
+        light.Matrix4("view", glm::value_ptr( view ) );
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, lightPos);
+        model = glm::scale(model, glm::vec3(0.2f)); // a smaller cube
+        light.Matrix4("model", glm::value_ptr( model ) );
 
-		light.Matrix4( "model", glm::value_ptr( liMod ) );
-		light.Matrix4( "view", glm::value_ptr( view ) );
-		light.Matrix4( "projection", glm::value_ptr( projection ) );
-		light.Uniform( "objColor", 1.0f, 0.5f, 0.31f );
-		light.Uniform( "lightColor", 1.0f, 1.0f, 1.0f );
-		light.Uniform( "lightPos", lightPos.x, lightPos.y, lightPos.y );
-
-		glDrawArrays( GL_TRIANGLES, 0, 36 );
+        glBindVertexArray(lightVAO);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
 
 		glfwSwapBuffers( window );
 		glfwPollEvents();
 	}
 
-	glDeleteVertexArrays(1, &VAO);
-	glDeleteBuffers(1, &VBO);
+	glDeleteVertexArrays(1, &cubeVAO);
+    glDeleteVertexArrays(1, &lightVAO);
+    glDeleteBuffers(1, &VBO);
 
 	glfwTerminate();
 	return 0;
 }
 
+bool lastEsc = false;
 void processInput(GLFWwindow* window)
 {
-	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, true);
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_RELEASE && lastEsc ) {
+		mouseFree = !mouseFree;
+		lastEsc = false;
+	} else if ( glfwGetKey( window, GLFW_KEY_ESCAPE ) == GLFW_PRESS )
+		lastEsc = true;
 	if ( glfwGetKey( window, GLFW_KEY_W ) == GLFW_PRESS )
 		cameraPos += cameraSpeed * cameraFront;
 	if ( glfwGetKey( window, GLFW_KEY_S ) == GLFW_PRESS )
@@ -252,6 +275,11 @@ void processInput(GLFWwindow* window)
 		cameraPos -= cameraSpeed * cameraUp;
 	if ( glfwGetKey( window, GLFW_KEY_E ) == GLFW_PRESS )
 		cameraPos += cameraSpeed * cameraUp;
+
+	if ( mouseFree )
+		glfwSetInputMode( window, GLFW_CURSOR, GLFW_CURSOR_NORMAL );
+	else
+		glfwSetInputMode( window, GLFW_CURSOR, GLFW_CURSOR_DISABLED );
 }
 
 void mouse_callback( GLFWwindow * window, double xpos, double ypos ) {
@@ -265,7 +293,7 @@ void mouse_callback( GLFWwindow * window, double xpos, double ypos ) {
 	GLfloat yoffset = lastY - ypos;
 	lastX = xpos;
 	lastY = ypos;
-
+	if ( !mouseFree ) {
 	GLfloat sens = 0.05f;
 	xoffset *= sens;
 	yoffset *= sens;
@@ -283,6 +311,7 @@ void mouse_callback( GLFWwindow * window, double xpos, double ypos ) {
 	front.y = sin( glm::radians( pitch ) );
 	front.z = cos( glm::radians( pitch ) ) * sin( glm::radians( yaw ) );
 	cameraFront = glm::normalize( front ) ;
+	}
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
