@@ -23,7 +23,7 @@ double lastX = 0, lastY = 0;
 
 const GLchar * lightVS = R"KEK(
 
-#version 330 core
+#version 450 core
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aNormal;
 
@@ -47,7 +47,7 @@ void main()
 
 const GLchar * lightFS = R"KEK(
 
-#version 330 core
+#version 450 core
 out vec4 FragColor;
 
 in vec3 Normal;
@@ -85,14 +85,14 @@ void main()
 
 const GLchar * lampFS = R"KEK(
 
-#version 330 core
+#version 450 core
 out vec4 FragColor;
 void main() { FragColor = vec4( 1.0 ); }
 )KEK";
 
 const GLchar * lampVS = R"KEK(
 
-#version 330 core
+#version 450 core
 
 layout ( location = 0 ) in vec3 aPos;
 
@@ -323,8 +323,8 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 
 GLFWwindow * AllInit() {
 	glfwInit();
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4 );
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5 );
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
