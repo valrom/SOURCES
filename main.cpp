@@ -8,6 +8,8 @@
 #include <vector>
 #include <cmath>
 
+
+
 #include "shader.hpp"
 #include "texture.hpp"
 
@@ -226,22 +228,23 @@ int main()
         prog.Matrix4( "view", glm::value_ptr( view ) );
 
         glm::mat4 model = glm::mat4(1.0f);
+		// model = glm::rotate( model, ( float ) glm::radians( glfwGetTime() * 100 ) , glm::vec3( 1.0f, 0.0f, 0.0f ) );
         prog.Matrix4("model", glm::value_ptr( model ) );
 
         glBindVertexArray(cubeVAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
-        // also draw the lamp object
-        light.Use();
-        light.Matrix4("projection", glm::value_ptr( projection ) );
-        light.Matrix4("view", glm::value_ptr( view ) );
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, lightPos);
-        model = glm::scale(model, glm::vec3(0.2f)); // a smaller cube
-        light.Matrix4("model", glm::value_ptr( model ) );
+		// also draw the lamp object
+		light.Use();
+		light.Matrix4("projection", glm::value_ptr( projection ) );
+		light.Matrix4("view", glm::value_ptr( view ) );
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, lightPos);
+		model = glm::scale(model, glm::vec3(0.2f)); // a smaller cube
+		light.Matrix4("model", glm::value_ptr( model ) );
 
-        glBindVertexArray(lightVAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+		glBindVertexArray(lightVAO);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
 
 		glfwSwapBuffers( window );
 		glfwPollEvents();
